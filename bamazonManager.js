@@ -49,10 +49,11 @@ var startManaging = function(){
         }
     })
 };
+// ===================================================================
 // View Products for Sale
 function itemsAvailable(){
     connection.query("SELECT * FROM products", function(err, res){
-        console.log("\n\n------------------------------------------\nITEMS AVAILABLE FOR SALE\n\n");
+        console.log("\n\n------------------------------------------\n\nITEMS AVAILABLE FOR SALE\n\n");
         if(err) throw err;
         for (var i=0;i<res.length;i++){
             if(res[i].stock_quantity != 0){
@@ -65,30 +66,35 @@ function itemsAvailable(){
         startManaging();
     });
 }
+// ===================================================================
 // View Low Inventory
 function quantityLow(){
     connection.query("SELECT * FROM products",function(err, res){
         if(err) throw err;
-        console.log("\n\n------------------------------------------\n5 or Less Remaining in Inventory of the following Products:\n\n");
+        console.log("\n\n------------------------------------------\n\n5 or Less Remaining in Inventory of the following Products:\n\n");
         for (var i=0;i<res.length;i++){
-            if(res[i].stock_quantity <= 5){
+            if(res[i].stock_quantity > 0 && res[i].stock_quantity <= 5){
             console.log("ITEM ID:  "+res[i].item_id+"  |  PRODUCT:  "+res[i].product_name+"  |  PRICE:  "+res[i].price_customer+"  |  IN STOCK:  "+res[i].stock_quantity)
+            }
+            else if(res[i].stock_quantity === 0){console.log("ITEM ID:  "+res[i].item_id+"  |  PRODUCT:  "+res[i].product_name+"  |  PRICE:  "+res[i].price_customer+"  |  IN STOCK:  SOLD OUT")
             }
         }
         console.log("\n\n------------------------------------------\n");
         startManaging();
     });
 }
-// Add to Inventory
-
 // ===================================================================
-
+// Add to Inventory
 var quantityAdd = function (){
     connection.query("SELECT * FROM products",function(err, res){
         if(err) throw err;
         console.log("\n\n------------------------------------------\nRemaining Inventory:\n\n");
         for (var i=0;i<res.length;i++){
+            if(res[i].stock_quantity != 0){
             console.log("ITEM ID:  "+res[i].item_id+"  |  PRODUCT:  "+res[i].product_name+"  |  PRICE:  "+res[i].price_customer+"  |  IN STOCK:  "+res[i].stock_quantity)
+            }
+            else {console.log("ITEM ID:  "+res[i].item_id+"  |  PRODUCT:  "+res[i].product_name+"  |  PRICE:  "+res[i].price_customer+"  |  IN STOCK:  SOLD OUT")
+            }
         }
         console.log("\n\n------------------------------------------\n");
         // itemQuantity();
@@ -103,7 +109,7 @@ var quantityAdd = function (){
             connection.query(query, {item_id:answer.item_id}, function(err, res){
                 if(err) throw err;
                 for(var i=0;i<res.length;i++){
-                    console.log("ID:  "+res[i].item_id+"\nProduct:  "+res[i].product_name+"\nPrice:  "+res[i].price_customer+"\nQuantity:  "+res[i].stock_quantity+" left.\n\n------------------------------\n");
+                    console.log("\n\nID:  "+res[i].item_id+"\nProduct:  "+res[i].product_name+"\nPrice:  "+res[i].price_customer+"\nQuantity:  "+res[i].stock_quantity+" left.\n\n------------------------------\n");
                 }
                 itemQuantity(res);
             })
@@ -122,14 +128,25 @@ var itemQuantity = function (wantedItem){
             }return false;
         }
     }).then(function(answer){
-        console.log("\n\n------------------------------\n\n");
-        console.log("WE HAD:\n"+wantedItem[0].stock_quantity+"\n------------------------------\n\n");
-        console.log("WE ADDED:\n"+answer.quantity+"\n------------------------------\n\n");
-        var stock_remaining = wantedItem[0].stock_quantity + answer.quantity;
-        // var price_total = answer.quantity * wantedItem[0].price_customer;
-        console.log("WE NOW HAVE:\n"+stock_remaining);
-        console.log("\n\n------------------------------\n\n");
-        startManaging();
+        connection.query(
+            "UPDATE products SET ? WHERE ?",[{
+                stock_quantity: answer.quantity+wantedItem[0].stock_quantity
+            },{
+                item_id: wantedItem[0].item_id
+            }],
+            function(err){
+                if(err) throw err;
+                console.log("\n\n------------------------------\n");
+                console.log("PRODUCT=>  "+wantedItem[0].product_name+"\n\nEXISTING:\n"+wantedItem[0].stock_quantity+"\n\n------------------------------\n");
+                console.log("ADDED:\n"+answer.quantity+"\n\n------------------------------\n");
+                var stock_remaining = wantedItem[0].stock_quantity + answer.quantity;
+                // var price_total = answer.quantity * wantedItem[0].price_customer;
+                console.log("NEW QUANTITY:\n"+stock_remaining);
+                console.log("\n------------------------------\n\n");
+                startManaging(); 
+            }
+        )
+
     })
 };
 
@@ -177,7 +194,7 @@ function productAdd(){
             },
             function(err){
                 if(err) throw err;
-                console.log("\n\n------------------------------------------\n"+answer.product+" was added to inventory.\nThere are "+answer.quantity+" currently in inventory.");
+                console.log("\n------------------------------------------\n\n"+answer.product+" \nwas added to inventory.\nThere are: \n"+answer.quantity+"\ncurrently in stock.\n\n------------------------------\n\n");
                 startManaging();
             }
         )
